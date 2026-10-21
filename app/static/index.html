@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gemini Voice Generator</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1120;
+        --bg-2: #0f172a;
+        --panel: #1e293b;
+        --panel-dark: #0b1120;
+        --panel-soft: rgba(30, 41, 59, 0.55);
+        --card: rgba(15, 23, 42, 0.38);
+        --text: #f1f5f9;
+        --text-muted: #94a3b8;
+        --text-faint: #64748b;
+        --border: rgba(148, 163, 184, 0.14);
+        --border-strong: rgba(148, 163, 184, 0.26);
+        --accent: #3b82f6;
+        --accent-2: #2563eb;
+        --accent-hover: #60a5fa;
+        --accent-soft: rgba(59, 130, 246, 0.12);
+        --success: #10b981;
+        --danger: #ef4444;
+        --secondary-bg: #334155;
+        --radius-lg: 18px;
+        --radius-md: 12px;
+        --radius-sm: 8px;
+        --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.2), 0 24px 48px -20px rgba(0, 0, 0, 0.55);
+        --shadow-btn: 0 6px 16px rgba(59, 130, 246, 0.3);
+      }
+      * { box-sizing: border-box; }
+      html { color-scheme: dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(1200px 600px at 15% -10%, rgba(59, 130, 246, 0.12), transparent 60%),
+          radial-gradient(900px 500px at 100% 0%, rgba(16, 185, 129, 0.08), transparent 55%),
+          linear-gradient(180deg, var(--bg-2), var(--panel-dark) 60%);
+        color: var(--text);
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        line-height: 1.45;
+      }
+      .container {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 44px 24px 64px;
+      }
+      .app-header {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 28px;
+      }
+      .app-icon {
+        width: 54px;
+        height: 54px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        border-radius: var(--radius-md);
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        box-shadow: 0 10px 24px -6px rgba(59, 130, 246, 0.5);
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.85rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+      }
+      .subtitle {
+        color: var(--text-muted);
+        margin: 4px 0 0;
+        font-size: 0.98rem;
+      }
+      .panel {
+        background: var(--panel-soft);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 26px;
+        box-shadow: var(--shadow-panel);
+        backdrop-filter: blur(14px);
+      }
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .section {
+        background: rgba(2, 6, 18, 0.42);
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-md);
+        padding: 20px 22px;
+        margin-bottom: 20px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+      }
+      .section:last-child {
+        margin-bottom: 0;
+      }
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--accent-hover);
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .render-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .render-row.full {
+        grid-template-columns: 1fr;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text);
+      }
+      textarea, input, select, button {
+        width: 100%;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-strong);
+        background: rgba(8, 13, 26, 0.55);
+        color: var(--text);
+        padding: 11px 14px;
+        font-size: 0.92rem;
+        font-family: inherit;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      }
+      select {
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px;
+        padding-right: 36px;
+      }
+      textarea:focus, input:focus, select:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: rgba(8, 13, 26, 0.75);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+      textarea {
+        min-height: 360px;
+        resize: vertical;
+        font-family: 'Consolas', 'Monaco', monospace;
+        line-height: 1.5;
+      }
+      input, select {
+        margin-bottom: 14px;
+      }
+      input[type="checkbox"] {
+        width: auto;
+        accent-color: var(--accent);
+        margin-bottom: 0;
+      }
+      button {
+        border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.92rem;
+        padding: 12px 18px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+        margin-bottom: 10px;
+        box-shadow: var(--shadow-btn);
+        letter-spacing: 0.01em;
+      }
+      button:hover:not(:disabled) {
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(59, 130, 246, 0.42);
+      }
+      button:active:not(:disabled) {
+        transform: translateY(0);
+        filter: brightness(0.98);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      button:focus-visible {
+        outline: 2px solid var(--accent-hover);
+        outline-offset: 2px;
+      }
+      .secondary {
+        background: var(--secondary-bg);
+        color: var(--text);
+        box-shadow: none;
+      }
+      .secondary:hover:not(:disabled) {
+        background: #3f4f65;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      }
+      .status {
+        margin-top: 14px;
+        min-height: 24px;
+        color: var(--text-muted);
+        font-size: 0.92rem;
+        line-height: 1.5;
+        white-space: pre-line;
+      }
+      .status.error { color: var(--danger); font-weight: 600; }
+      .status.success { color: var(--success); font-weight: 600; }
+      .preflight-summary {
+        display: none;
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-left: 3px solid var(--accent);
+        background: var(--accent-soft);
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        color: var(--text-muted);
+        font-size: 0.87rem;
+        line-height: 1.55;
+      }
+      .progress-container {
+        margin-top: 16px;
+        display: none;
+      }
+      .progress-bar {
+        width: 100%;
+        height: 7px;
+        background: rgba(8, 13, 26, 0.6);
+        border-radius: 999px;
+        overflow: hidden;
+        margin-bottom: 8px;
+        border: 1px solid var(--border);
+      }
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--success));
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 999px;
+      }
+      .progress-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      .activity-log {
+        margin-top: 16px;
+        padding: 6px 14px;
+        background: rgba(8, 13, 26, 0.45);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        max-height: 220px;
+        overflow-y: auto;
+        display: none;
+      }
+      .activity-log.active {
+        display: block;
+      }
+      .activity-item {
+        font-size: 0.87rem;
+        padding: 7px 0;
+        color: var(--text-muted);
+        line-height: 1.35;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+      }
+      .activity-item:last-child {
+        border-bottom: none;
+      }
+      .activity-item.processing {
+        color: var(--accent-hover);
+      }
+      .activity-item.success {
+        color: var(--success);
+      }
+      .activity-item.error {
+        color: var(--danger);
+      }
+      .activity-item-icon {
+        min-width: 12px;
+        margin-top: 2px;
+      }
+      .files {
+        margin-top: 20px;
+        padding: 0;
+        list-style: none;
+      }
+      .files li {
+        background: var(--accent-soft);
+        border: 1px solid rgba(59, 130, 246, 0.18);
+        border-radius: var(--radius-md);
+        margin-top: 12px;
+        padding: 14px;
+        word-break: break-all;
+        transition: all 0.2s ease;
+      }
+      .files li:hover {
+        background: rgba(59, 130, 246, 0.16);
+        border-color: rgba(59, 130, 246, 0.3);
+      }
+      .files li audio {
+        width: 100%;
+        height: 40px;
+        margin-top: 10px;
+        border-radius: var(--radius-sm);
+        outline: none;
+      }
+      .hint-text {
+        font-size: 0.87rem;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+        line-height: 1.55;
+      }
+      .hint-text strong {
+        color: var(--accent-hover);
+      }
+      .hint-text code {
+        background: rgba(148, 163, 184, 0.12);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 0.85em;
+        color: var(--text);
+      }
+      .mode-tabs {
+        display: inline-flex;
+        gap: 4px;
+        padding: 5px;
+        background: rgba(8, 13, 26, 0.5);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        margin-bottom: 26px;
+      }
+      .mode-tab {
+        width: auto;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 700;
+        margin-bottom: 0;
+        box-shadow: none;
+      }
+      .mode-tab.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white;
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+      }
+      .mode-tab:hover:not(.active):not(:disabled) {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        transform: none;
+        box-shadow: none;
+      }
+      details > summary {
+        list-style: none;
+      }
+      details > summary::-webkit-details-marker {
+        display: none;
+      }
+      details > summary::before {
+        content: '▸';
+        display: inline-block;
+        margin-right: 2px;
+        color: var(--text-faint);
+        transition: transform 0.15s ease;
+      }
+      details[open] > summary::before {
+        transform: rotate(90deg);
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.25);
+        border-radius: 999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.4);
+        background-clip: padding-box;
+      }
+      @media (max-width: 900px) {
+        .two-col { grid-template-columns: 1fr; }
+        h1 { font-size: 1.5rem; }
+        .container { padding: 24px 16px 40px; }
+        .panel { padding: 18px; }
+        .app-icon { width: 46px; height: 46px; font-size: 1.35rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="app-header">
+        <div class="app-icon">🎙️</div>
+        <div>
+          <h1>Gemini Voice Generator</h1>
+          <div class="subtitle">Convert scripts into natural-sounding audio with Google's Gemini TTS</div>
+        </div>
+      </div>
+
+      <div class="mode-tabs">
+        <button id="modeTabSingle" type="button" class="mode-tab active">🎙️ Single Script (one course)</button>
+        <button id="modeTabBatch" type="button" class="mode-tab">📦 Batch: Multiple Courses (.zip)</button>
+      </div>
+
+      <div class="panel two-col" id="batchModePanel" style="margin-bottom: 24px; display:none;">
+        <div>
+          <!-- Step 1: Load Bundle -->
+          <div class="section">
+            <div class="section-title">📦 Step 1: Load Course Bundle</div>
+            <div class="hint-text">
+              <strong>💡 Tip:</strong> Upload a .zip containing multiple course scripts (.md/.txt/.json). Each file becomes its own course, rendered into its own output folder and downloadable zip. Two-voice ("Voice A"/"Voice B" dialogue) scripts are auto-detected.
+            </div>
+            <button id="loadBundleBtn" class="secondary full">📂 Load course bundle (.zip)</button>
+            <input type="file" id="bundleFileInput" accept=".zip" style="display:none;" />
+          </div>
+
+          <!-- Step 2: Configuration Section -->
+          <div class="section">
+            <div class="section-title">⚙️ Step 2: Configure API, Model & Voices</div>
+
+            <label for="bundleApiKey">API Key (optional if in .env)</label>
+            <input id="bundleApiKey" type="password" placeholder="Gemini API key" />
+
+            <div id="bundleApiStatusIndicator" style="padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; margin-bottom: 14px; display: none;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+                <span id="bundleApiStatusIcon" style="font-size: 1.2rem;">✓</span>
+                <span id="bundleApiStatusText" style="color: var(--success); font-weight: 600;">API loaded and tested</span>
+              </div>
+              <div id="bundleApiStatusDetail" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;"></div>
+            </div>
+
+            <label for="bundleModel">Model</label>
+            <select id="bundleModel">
+              <option value="gemini-3.1-flash-tts-preview">gemini-3.1-flash-tts-preview (Recommended)</option>
+              <option value="gemini-2.5-flash-preview-tts">gemini-2.5-flash-preview-tts</option>
+              <option value="gemini-2.5-pro-preview-tts">gemini-2.5-pro-preview-tts</option>
+            </select>
+            <input id="bundleCustomModel" type="text" placeholder="Or enter custom model name" />
+
+            <div id="bundleVoiceMapSection" style="display:none;">
+              <label for="bundleVoiceA">Voice A (Guide persona)</label>
+              <select id="bundleVoiceA">
+                <option value="Zephyr">Zephyr</option>
+                <option value="Kore">Kore</option>
+                <option value="Puck">Puck</option>
+                <option value="Luna">Luna</option>
+              </select>
+              <label for="bundleVoiceB">Voice B (Colleague persona)</label>
+              <select id="bundleVoiceB">
+                <option value="Zephyr">Zephyr</option>
+                <option value="Kore" selected>Kore</option>
+                <option value="Puck">Puck</option>
+                <option value="Luna">Luna</option>
+              </select>
+            </div>
+
+            <label for="bundleFallbackVoice">Fallback voice (for scripts without an embedded/two-voice tag)</label>
+            <select id="bundleFallbackVoice">
+              <option value="Zephyr">Zephyr</option>
+              <option value="Kore">Kore</option>
+              <option value="Puck">Puck</option>
+              <option value="Luna">Luna</option>
+            </select>
+          </div>
+
+          <!-- Step 3: Advanced Settings Section -->
+          <div class="section">
+            <div class="section-title">🔧 Step 3: Advanced Settings</div>
+
+            <label for="bundleTemperature">Temperature (0.1 - 2.0)</label>
+            <input id="bundleTemperature" type="number" step="0.1" min="0.1" max="2.0" value="0.3" />
+
+            <label for="bundleSystemInstruction">System Instructions Override (optional)</label>
+            <textarea id="bundleSystemInstruction" style="min-height: 80px; margin-bottom: 14px;" placeholder="Only applies to courses without their own embedded/two-voice system instructions."></textarea>
+
+            <label for="bundleCourseList">Which Courses & Scenes to Render</label>
+            <div class="hint-text">Load a bundle above to see its courses here. Uncheck any course or scene you don't want to render.</div>
+            <div class="render-row" style="margin-bottom:8px;">
+              <button id="selectAllBundleBtn" type="button" class="secondary">Select all</button>
+              <button id="selectNoBundleBtn" type="button" class="secondary">Select none</button>
+            </div>
+            <div id="bundleCourseList" style="max-height:320px; overflow-y:auto; margin-bottom:14px; border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px 12px;"></div>
+          </div>
+
+          <!-- Step 4: Verification Section -->
+          <div class="section">
+            <div class="section-title">✓ Step 4: Verify Configuration</div>
+            <div class="hint-text">
+              <strong>💡 Optional:</strong> Test your API key before rendering the whole bundle.
+            </div>
+            <button id="checkGeminiBundleBtn" class="secondary">✓ Check API</button>
+          </div>
+
+          <!-- Step 5: Generate Section -->
+          <div class="section">
+            <div class="section-title">🚀 Step 5: Render Bundle</div>
+            <div class="render-row">
+              <button id="renderBundleBtn">🚀 Render Selected Courses</button>
+              <button id="stopBundleBtn" class="secondary" style="display:none; background:#dc2626;">🛑 Stop</button>
+            </div>
+            <div class="hint-text">
+              <strong>💡 Tip:</strong> Only the courses/scenes checked in Step 3 are rendered.
+            </div>
+          </div>
+
+          <!-- Step 6: Progress Section -->
+          <div class="section">
+            <div class="section-title">⏳ Step 6: Progress</div>
+            <div class="status" id="bundleStatus"></div>
+            <div class="progress-container" id="bundleProgressContainer">
+              <div class="progress-bar"><div class="progress-fill" id="bundleProgressFill"></div></div>
+              <div class="progress-text" id="bundleProgressText"></div>
+            </div>
+            <div class="activity-log" id="bundleActivityLog"></div>
+          </div>
+
+          <!-- Step 7: Results Section -->
+          <div class="section">
+            <div class="section-title">🎵 Step 7: Download Results</div>
+            <div id="bundleResults" style="display:none;">
+              <div id="bundleCourseZips"></div>
+              <button id="downloadAllCourseZipsBtn" class="secondary full" style="margin-top:10px;">⬇️ Download all as one bundle (zip of zips)</button>
+            </div>
+            <div class="hint-text" id="bundleResultsHint">Render the bundle above to see per-course downloads here.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel two-col" id="singleModePanel">
+        <div>
+          <!-- Step 1: Script Input Section -->
+          <div class="section">
+            <div class="section-title">📝 Step 1: Load Script</div>
+            <div class="hint-text">
+              <strong>💡 Tip:</strong> This workflow renders one script as one course. To render several courses at once, switch to the "Batch" tab above.
+            </div>
+            <label for="scriptText">Transcript</label>
+            <textarea id="scriptText" placeholder="Paste your script here. Format scenes like:&#10;&#10;Scene 1 - Welcome&#10;Your script text here...&#10;&#10;Scene 2&#10;Next section..."></textarea>
+            <button id="loadScriptBtn" class="secondary full">📂 Load script from file</button>
+            <input type="file" id="scriptFileInput" accept=".txt,.md,.markdown" style="display:none;" />
+          </div>
+
+          <!-- Step 2: Configuration Section -->
+          <div class="section">
+            <div class="section-title">⚙️ Step 2: Configure API & Voice</div>
+            
+            <label for="apiKey">API Key (optional if in .env)</label>
+            <input id="apiKey" type="password" placeholder="Gemini API key" />
+            
+            <!-- API Status Indicator -->
+            <div id="apiStatusIndicator" style="padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; margin-bottom: 14px; display: none;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+                <span id="apiStatusIcon" style="font-size: 1.2rem;">✓</span>
+                <span id="apiStatusText" style="color: var(--success); font-weight: 600;">API loaded and tested</span>
+              </div>
+              <div id="apiStatusDetail" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;"></div>
+            </div>
+
+            <label for="model">Model</label>
+            <select id="model">
+              <option value="gemini-3.1-flash-tts-preview">gemini-3.1-flash-tts-preview (Recommended)</option>
+              <option value="gemini-2.5-flash-preview-tts">gemini-2.5-flash-preview-tts</option>
+              <option value="gemini-2.5-pro-preview-tts">gemini-2.5-pro-preview-tts</option>
+            </select>
+            <input id="customModel" type="text" placeholder="Or enter custom model name" />
+
+            <label for="voice">Voice</label>
+            <select id="voice">
+              <option value="Zephyr">Zephyr</option>
+              <option value="Kore">Kore</option>
+              <option value="Puck">Puck</option>
+              <option value="Luna">Luna</option>
+            </select>
+            <input id="customVoice" type="text" placeholder="Or enter custom voice name" />
+          </div>
+
+          <!-- Step 2.5: Multi-Voice Scenes Section -->
+          <div class="section" id="sceneVoicesSection" style="display:none;">
+            <div class="section-title">🎭 Multi-Voice Scenes (optional)</div>
+            <div class="hint-text">
+              <strong>💡 Tip:</strong> Assign a different voice per scene. Leave a scene as "Use default" to fall back to the global voice above (or a voice embedded in the script via JSON <code>voice</code> or a <code>Voice: Name</code> line).
+            </div>
+            <div id="sceneVoiceList"></div>
+          </div>
+
+          <!-- Step 3: Advanced Settings Section -->
+          <div class="section">
+            <div class="section-title">🔧 Step 3: Advanced Settings</div>
+
+            <label for="temperature">Temperature (0.1 - 2.0)</label>
+            <input id="temperature" type="number" step="0.1" min="0.1" max="2.0" value="0.3" />
+
+            <label for="systemInstruction">System Instructions</label>
+            <textarea id="systemInstruction" style="min-height: 100px; margin-bottom: 14px;" placeholder="Auto-loaded from script. You can override here."></textarea>
+
+            <label for="sceneSelector">Which Scenes to Render</label>
+            <div class="render-row" style="margin-bottom:8px;">
+              <button id="selectAllScenesBtn" type="button" class="secondary">Select all</button>
+              <button id="selectNoScenesBtn" type="button" class="secondary">Select none</button>
+            </div>
+            <div id="sceneCheckboxList" style="max-height:220px; overflow-y:auto; margin-bottom:14px; border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px 12px;"></div>
+          </div>
+
+          <!-- Step 4: Verification Section -->
+          <div class="section">
+            <div class="section-title">✓ Step 4: Verify Configuration</div>
+
+            <div class="hint-text">
+              <strong>💡 Optional:</strong> Test your API key and voice before generating all files.
+            </div>
+
+            <div class="render-row">
+              <button id="checkGeminiBtn" class="secondary">✓ Check API</button>
+              <button id="testModelBtn" class="secondary">🎧 Test Voice</button>
+            </div>
+            <button id="preflightBtn" class="secondary">Review generation plan</button>
+            <div id="preflightSummary" class="preflight-summary"></div>
+          </div>
+
+          <!-- Step 5: Generate Section -->
+          <div class="section">
+            <div class="section-title">🚀 Step 5: Generate Audio</div>
+            <div class="render-row">
+              <button id="generateBtn">🚀 Generate WAV Files</button>
+              <button id="regenerateBtn" class="secondary">↻ Regenerate Selected</button>
+            </div>
+            <button id="stopGenerateBtn" class="secondary" style="width: 100%; margin-bottom: 10px; display: none; background: #dc2626;">🛑 Stop Rendering</button>
+            <div class="hint-text">
+              <strong>💡 Tip:</strong> Flash models are 5-10x cheaper than Pro. Use them for cost-effective TTS generation.
+            </div>
+          </div>
+
+          <!-- Step 6: Progress & Status Section -->
+          <div class="section">
+            <div class="section-title">⏳ Step 6: Progress</div>
+            <div class="status" id="status"></div>
+            <div class="progress-container" id="progressContainer">
+              <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+              <div class="progress-text" id="progressText"></div>
+            </div>
+            <div class="activity-log" id="activityLog"></div>
+          </div>
+
+          <!-- Step 7: Results Section -->
+          <div class="section">
+            <div class="section-title">🎵 Step 7: Listen & Download</div>
+            <label for="courseSelect" style="margin-bottom: 10px;">Course folder</label>
+            <select id="courseSelect">
+              <option value="unsorted">unsorted</option>
+            </select>
+            <label for="audioFileSelect" style="margin-bottom: 10px;">Select File to Play</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 14px; align-items: center;">
+              <select id="audioFileSelect" style="flex: 1; margin-bottom: 0;">
+                <option value="">-- No files yet --</option>
+              </select>
+              <button id="refreshAudioBtn" class="secondary" style="width: auto; padding: 11px 14px; font-size: 0.85rem; margin-bottom: 0; white-space: nowrap;">🔄</button>
+            </div>
+            <audio id="selectedAudioPlayer" controls style="width: 100%; height: 40px; border-radius: 6px; display: none;"></audio>
+
+            <button id="downloadZipBtn" class="secondary full" style="margin-top: 14px;">⬇️ Download all WAVs as ZIP</button>
+            <button id="clearCourseAudioBtn" class="secondary full" style="margin-top: 10px;">Clear course audio</button>
+          </div>
+
+          <!-- Utility Section -->
+          <div class="section">
+            <div class="section-title">🛠️ Utilities</div>
+            <div class="render-row">
+              <button id="restartServerBtn" class="secondary">🔄 Restart</button>
+              <button id="copyErrorBtn" class="secondary">📋 Copy Error</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const scriptText = document.getElementById('scriptText');
+      const apiKey = document.getElementById('apiKey');
+      const model = document.getElementById('model');
+      const customModel = document.getElementById('customModel');
+      const voice = document.getElementById('voice');
+      const customVoice = document.getElementById('customVoice');
+      const systemInstruction = document.getElementById('systemInstruction');
+      const temperature = document.getElementById('temperature');
+      const sceneCheckboxList = document.getElementById('sceneCheckboxList');
+      const status = document.getElementById('status');
+      const activityLog = document.getElementById('activityLog');
+      const courseSelect = document.getElementById('courseSelect');
+      const audioFileSelect = document.getElementById('audioFileSelect');
+      const refreshAudioBtn = document.getElementById('refreshAudioBtn');
+      const selectedAudioPlayer = document.getElementById('selectedAudioPlayer');
+      const preflightSummary = document.getElementById('preflightSummary');
+      const sceneVoicesSection = document.getElementById('sceneVoicesSection');
+      const sceneVoiceList = document.getElementById('sceneVoiceList');
+      let sceneVoiceOverrides = {}; // { sceneName: voiceName } — manual per-scene overrides
+      let allSceneNames = [];
+      let deselectedScenes = new Set(); // scenes unchecked by the user in the "Which Scenes to Render" list
+      const scriptStorageKey = 'geminiVoiceGenerator.script';
+      const courseStorageKey = 'geminiVoiceGenerator.courseName';
+      let lastError = '';
+      let generationAbortController = null;
+      let forceRegenerateRequested = false;
+      let courseName = sessionStorage.getItem(courseStorageKey) || 'unsorted';
+
+      // --- Workflow mode toggle: single script vs batch zip bundle ---
+      const modeTabSingle = document.getElementById('modeTabSingle');
+      const modeTabBatch = document.getElementById('modeTabBatch');
+      const singleModePanel = document.getElementById('singleModePanel');
+      const batchModePanel = document.getElementById('batchModePanel');
+      const workflowModeKey = 'geminiVoiceGenerator.workflowMode';
+
+      function setWorkflowMode(mode) {
+        const isBatch = mode === 'batch';
+        singleModePanel.style.display = isBatch ? 'none' : '';
+        batchModePanel.style.display = isBatch ? '' : 'none';
+        modeTabSingle.classList.toggle('active', !isBatch);
+        modeTabBatch.classList.toggle('active', isBatch);
+        sessionStorage.setItem(workflowModeKey, isBatch ? 'batch' : 'single');
+      }
+
+      modeTabSingle.addEventListener('click', () => setWorkflowMode('single'));
+      modeTabBatch.addEventListener('click', () => setWorkflowMode('batch'));
+      setWorkflowMode(sessionStorage.getItem(workflowModeKey) || 'single');
+
+      // --- Batch: multi-course zip bundle ---
+      const bundleFileInput = document.getElementById('bundleFileInput');
+      const bundleApiKey = document.getElementById('bundleApiKey');
+      const bundleModel = document.getElementById('bundleModel');
+      const bundleCustomModel = document.getElementById('bundleCustomModel');
+      const bundleTemperature = document.getElementById('bundleTemperature');
+      const bundleSystemInstruction = document.getElementById('bundleSystemInstruction');
+      const bundleCourseList = document.getElementById('bundleCourseList');
+      const bundleVoiceMapSection = document.getElementById('bundleVoiceMapSection');
+      const bundleVoiceA = document.getElementById('bundleVoiceA');
+      const bundleVoiceB = document.getElementById('bundleVoiceB');
+      const bundleFallbackVoice = document.getElementById('bundleFallbackVoice');
+      const bundleStatus = document.getElementById('bundleStatus');
+      const bundleActivityLog = document.getElementById('bundleActivityLog');
+      const bundleProgressContainer = document.getElementById('bundleProgressContainer');
+      const bundleProgressFill = document.getElementById('bundleProgressFill');
+      const bundleProgressText = document.getElementById('bundleProgressText');
+      const bundleResults = document.getElementById('bundleResults');
+      const bundleResultsHint = document.getElementById('bundleResultsHint');
+      const bundleCourseZips = document.getElementById('bundleCourseZips');
+      let bundleFile = null;
+      let bundleAbortController = null;
+      let bundleGeneratedCourses = [];
+      let bundleCourseData = []; // parsed course/records from /parse-course-bundle
+      let bundleDeselectedClips = {}; // { courseName: Set(clipName) } — clips unchecked by the user
+
+      function setBundleStatus(message, kind) {
+        bundleStatus.textContent = message;
+        bundleStatus.className = 'status';
+        if (kind) bundleStatus.classList.add(kind);
+      }
+
+      function getSelectedBundleModel() {
+        return (bundleCustomModel.value || bundleModel.value).trim() || undefined;
+      }
+
+      document.getElementById('checkGeminiBundleBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('checkGeminiBundleBtn');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Checking...';
+        setBundleStatus('Checking Gemini API...', '');
+
+        try {
+          const response = await fetchWithTimeout('/check-gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: bundleApiKey.value.trim() || undefined })
+          }, 15000);
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || 'Gemini API check failed.');
+
+          const models = (data.available_models || []).slice(0, 10);
+          setBundleStatus(`✓ API is valid! Found ${models.length} models.`, 'success');
+        } catch (error) {
+          setBundleStatus(error.message || 'Gemini API check failed.', 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
+
+      function addBundleActivityItem(message, type = 'info') {
+        const item = document.createElement('div');
+        item.className = `activity-item ${type}`;
+        let icon = '•';
+        if (type === 'processing') icon = '⏳';
+        else if (type === 'success') icon = '✓';
+        else if (type === 'error') icon = '✗';
+        item.innerHTML = `<span class="activity-item-icon">${icon}</span><span>${message}</span>`;
+        bundleActivityLog.appendChild(item);
+        bundleActivityLog.classList.add('active');
+        bundleActivityLog.scrollTop = bundleActivityLog.scrollHeight;
+      }
+
+      function renderBundleResults(courseNames) {
+        bundleResultsHint.style.display = 'none';
+        bundleResults.style.display = 'block';
+        bundleCourseZips.innerHTML = courseNames.map(name =>
+          `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:0.85rem;">
+            <span>${name}</span>
+            <a href="/download-output-zip?course_name=${encodeURIComponent(name)}" style="padding:6px 10px; border-radius:6px; background:rgba(255,255,255,0.08); text-decoration:none; color:inherit; font-size:0.8rem;">⬇️ Download zip</a>
+          </div>`
+        ).join('');
+      }
+
+      function getBundleCourseSelectedNames(course) {
+        const deselected = bundleDeselectedClips[course.name] || new Set();
+        return course.records.filter(r => !deselected.has(r.name)).map(r => r.name);
+      }
+
+      function renderBundleCourseList() {
+        let hasTwoVoice = false;
+        bundleCourseList.innerHTML = bundleCourseData.map(course => {
+          if (course.format === 'two_voice') hasTwoVoice = true;
+          const rolesText = course.format === 'two_voice'
+            ? Object.entries(course.voice_roles).map(([letter, persona]) => `${letter}${persona ? ` (${persona})` : ''}`).join(', ')
+            : 'single voice';
+          const selectedCount = getBundleCourseSelectedNames(course).length;
+          const courseChecked = selectedCount === course.records.length;
+          const clipRows = course.records.map(record => `
+            <label style="display:flex; align-items:center; gap:8px; padding:2px 0; font-size:0.8rem; cursor:pointer;">
+              <input type="checkbox" class="bundle-clip-checkbox" data-course="${course.name}" data-clip="${record.name}" ${(bundleDeselectedClips[course.name] || new Set()).has(record.name) ? '' : 'checked'} />
+              <span>${record.name}${record.voice ? ` (voice ${record.voice})` : ''}</span>
+            </label>
+          `).join('');
+          return `<details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; display:flex; align-items:center; gap:8px; font-size:0.85rem;">
+              <input type="checkbox" class="bundle-course-checkbox" data-course="${course.name}" ${courseChecked ? 'checked' : ''} />
+              <strong>${course.name}</strong> — ${selectedCount}/${course.records.length} clip(s) selected, ${rolesText}
+            </summary>
+            <div style="margin-left:26px; margin-top:6px;">${clipRows}</div>
+          </details>`;
+        }).join('');
+
+        bundleVoiceMapSection.style.display = hasTwoVoice ? 'block' : 'none';
+      }
+
+      bundleCourseList.addEventListener('click', (e) => {
+        // Keep the checkbox click from toggling the <details> open/closed state.
+        if (e.target.matches('input[type="checkbox"]')) {
+          e.stopPropagation();
+        }
+      });
+
+      bundleCourseList.addEventListener('change', (e) => {
+        const checkbox = e.target.closest('input[type="checkbox"]');
+        if (!checkbox) return;
+        const courseName = checkbox.dataset.course;
+        const course = bundleCourseData.find(c => c.name === courseName);
+        if (!course) return;
+
+        if (checkbox.classList.contains('bundle-course-checkbox')) {
+          bundleDeselectedClips[courseName] = checkbox.checked ? new Set() : new Set(course.records.map(r => r.name));
+        } else if (checkbox.classList.contains('bundle-clip-checkbox')) {
+          const clipName = checkbox.dataset.clip;
+          const deselected = bundleDeselectedClips[courseName] || new Set();
+          if (checkbox.checked) {
+            deselected.delete(clipName);
+          } else {
+            deselected.add(clipName);
+          }
+          bundleDeselectedClips[courseName] = deselected;
+        }
+        renderBundleCourseList();
+      });
+
+      document.getElementById('selectAllBundleBtn').addEventListener('click', () => {
+        bundleDeselectedClips = {};
+        renderBundleCourseList();
+      });
+
+      document.getElementById('selectNoBundleBtn').addEventListener('click', () => {
+        bundleCourseData.forEach(course => {
+          bundleDeselectedClips[course.name] = new Set(course.records.map(r => r.name));
+        });
+        renderBundleCourseList();
+      });
+
+      document.getElementById('loadBundleBtn').addEventListener('click', () => bundleFileInput.click());
+
+      bundleFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        bundleFile = file;
+        bundleResults.style.display = 'none';
+        bundleResultsHint.style.display = 'block';
+        bundleGeneratedCourses = [];
+        bundleDeselectedClips = {};
+        bundleCourseData = [];
+        bundleCourseList.innerHTML = '<div class="hint-text">Parsing zip...</div>';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const res = await fetch('/parse-course-bundle', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'Failed to parse bundle.');
+
+          bundleCourseData = data.courses || [];
+          renderBundleCourseList();
+          setBundleStatus(`✓ Parsed bundle: ${data.course_count} course(s) found.`, 'success');
+        } catch (error) {
+          bundleCourseList.innerHTML = '';
+          setBundleStatus(error.message || 'Failed to parse bundle.', 'error');
+        }
+      });
+
+      document.getElementById('renderBundleBtn').addEventListener('click', async () => {
+        if (!bundleFile) {
+          setBundleStatus('❌ Load a course bundle zip first.', 'error');
+          return;
+        }
+
+        const selection = {};
+        bundleCourseData.forEach(course => {
+          selection[course.name] = getBundleCourseSelectedNames(course);
+        });
+        const totalSelected = Object.values(selection).reduce((sum, names) => sum + names.length, 0);
+        if (!totalSelected) {
+          setBundleStatus('❌ Select at least one course/scene to render.', 'error');
+          return;
+        }
+
+        const btn = document.getElementById('renderBundleBtn');
+        const stopBtn = document.getElementById('stopBundleBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Rendering...';
+        stopBtn.style.display = 'block';
+
+        bundleActivityLog.innerHTML = '';
+        bundleResults.style.display = 'none';
+        bundleResultsHint.style.display = 'block';
+        bundleProgressContainer.style.display = 'block';
+        bundleProgressFill.style.width = '0%';
+        bundleProgressText.textContent = '';
+        bundleGeneratedCourses = [];
+        addBundleActivityItem('Initializing batch generation...', 'processing');
+
+        const voiceMap = {};
+        if (bundleVoiceMapSection.style.display !== 'none') {
+          voiceMap.A = bundleVoiceA.value;
+          voiceMap.B = bundleVoiceB.value;
+        }
+
+        const formData = new FormData();
+        formData.append('file', bundleFile);
+        formData.append('api_key', bundleApiKey.value.trim() || '');
+        formData.append('model', getSelectedBundleModel() || '');
+        formData.append('voice', bundleFallbackVoice.value || '');
+        formData.append('temperature', bundleTemperature.value !== '' ? bundleTemperature.value : '');
+        formData.append('system_instruction', bundleSystemInstruction.value.trim() || '');
+        formData.append('voice_map', JSON.stringify(voiceMap));
+        formData.append('selection', JSON.stringify(selection));
+
+        bundleAbortController = new AbortController();
+
+        try {
+          const response = await fetch('/generate-course-bundle-stream', {
+            method: 'POST',
+            body: formData,
+            signal: bundleAbortController.signal,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Batch generation failed.');
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value);
+            const lines = text.split('\n').filter(line => line.trim());
+
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+
+                if (data.error) {
+                  setBundleStatus('❌ ' + data.error, 'error');
+                  addBundleActivityItem('❌ ' + data.error, 'error');
+                  bundleProgressContainer.style.display = 'none';
+                  return;
+                }
+
+                if (data.status === 'generating') {
+                  const percent = (data.current / data.total) * 100;
+                  bundleProgressFill.style.width = percent + '%';
+                  bundleProgressText.textContent = data.message;
+                  addBundleActivityItem(data.message, 'processing');
+                }
+
+                if (data.status === 'completed') {
+                  const percent = (data.current / data.total) * 100;
+                  bundleProgressFill.style.width = percent + '%';
+                  addBundleActivityItem(data.reused ? `✓ Reused: ${data.file}` : `✓ Completed: ${data.file}`, 'success');
+                }
+
+                if (data.status === 'error') {
+                  addBundleActivityItem('❌ ' + data.message, 'error');
+                }
+
+                if (data.status === 'done') {
+                  bundleGeneratedCourses = data.courses || [];
+                  renderBundleResults(bundleGeneratedCourses);
+                  setBundleStatus(`✓ Rendered ${bundleGeneratedCourses.length} course(s)!`, 'success');
+                  addBundleActivityItem(`✓ All done! Rendered ${bundleGeneratedCourses.length} course(s).`, 'success');
+                  bundleProgressContainer.style.display = 'none';
+                }
+              } catch (e) {
+                // Skip non-JSON lines
+              }
+            }
+          }
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            addBundleActivityItem('⏹️ Rendering stopped by user.', 'error');
+          } else {
+            setBundleStatus(error.message || 'Batch generation failed.', 'error');
+            addBundleActivityItem('❌ ' + (error.message || 'Batch generation failed.'), 'error');
+          }
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '🚀 Render Selected Courses';
+          stopBtn.style.display = 'none';
+        }
+      });
+
+      document.getElementById('stopBundleBtn').addEventListener('click', () => {
+        if (bundleAbortController) bundleAbortController.abort();
+      });
+
+      document.getElementById('downloadAllCourseZipsBtn').addEventListener('click', () => {
+        if (!bundleGeneratedCourses.length) return;
+        window.location.href = '/download-all-course-zips?course_names=' + encodeURIComponent(bundleGeneratedCourses.join(','));
+      });
+
+      function addActivityItem(message, type = 'info') {
+        const item = document.createElement('div');
+        item.className = `activity-item ${type}`;
+        
+        let icon = '•';
+        if (type === 'processing') icon = '⏳';
+        else if (type === 'success') icon = '✓';
+        else if (type === 'error') icon = '✗';
+        
+        item.innerHTML = `<span class="activity-item-icon">${icon}</span><span>${message}</span>`;
+        activityLog.appendChild(item);
+        activityLog.scrollTop = activityLog.scrollHeight;
+      }
+
+      function clearActivityLog() {
+        activityLog.innerHTML = '';
+      }
+
+      function showActivityLog() {
+        activityLog.classList.add('active');
+      }
+
+      function hideActivityLog() {
+        activityLog.classList.remove('active');
+      }
+
+      function fetchWithTimeout(url, options = {}, timeout = 60000) {
+        return Promise.race([
+          fetch(url, options),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Request timeout after ${timeout / 1000}s`)), timeout)
+          )
+        ]);
+      }
+
+      function updateAudioDropdown(paths) {
+        const currentVal = audioFileSelect.value;
+        const options = ['<option value="">-- Choose file from folder --</option>'];
+        if (paths && paths.length > 0) {
+          paths.forEach(p => {
+            const label = String(p).split(/[/\\]/).pop();
+            options.push(`<option value="${p}">${label}</option>`);
+          });
+        }
+        audioFileSelect.innerHTML = options.join('');
+        if (currentVal && paths.includes(currentVal)) {
+          audioFileSelect.value = currentVal;
+        }
+      }
+
+      audioFileSelect.addEventListener('change', () => {
+        const selected = audioFileSelect.value;
+        if (selected) {
+          selectedAudioPlayer.src = '/audio/' + selected.split('/').map(encodeURIComponent).join('/');
+          selectedAudioPlayer.style.display = 'block';
+          selectedAudioPlayer.play().catch(() => {});
+        } else {
+          selectedAudioPlayer.pause();
+          selectedAudioPlayer.style.display = 'none';
+        }
+      });
+
+      refreshAudioBtn.addEventListener('click', () => {
+        loadExistingAudio();
+      });
+
+      courseSelect.addEventListener('change', () => {
+        courseName = courseSelect.value;
+        sessionStorage.setItem(courseStorageKey, courseName);
+        selectedAudioPlayer.pause();
+        selectedAudioPlayer.style.display = 'none';
+        loadExistingAudio();
+      });
+
+      function setCourseName(name) {
+        courseName = name || 'unsorted';
+        sessionStorage.setItem(courseStorageKey, courseName);
+        courseSelect.value = courseName;
+      }
+
+      async function loadCourses() {
+        try {
+          const response = await fetch('/list-courses');
+          const data = await response.json();
+          const courses = data.courses || [];
+          const selectedCourse = courses.includes(courseName) ? courseName : 'unsorted';
+          courseSelect.innerHTML = ['<option value="unsorted">unsorted</option>', ...courses.map(course => `<option value="${course}">${course}</option>`)].join('');
+          courseSelect.value = selectedCourse;
+          courseName = selectedCourse;
+          sessionStorage.setItem(courseStorageKey, courseName);
+        } catch (error) {
+          courseSelect.value = 'unsorted';
+        }
+      }
+
+      function getSelectedModel() {
+        return (customModel.value || model.value).trim() || undefined;
+      }
+
+      function getSelectedVoice() {
+        return (customVoice.value || voice.value).trim() || undefined;
+      }
+
+      function pruneSceneVoiceOverrides(sceneNames) {
+        const nameSet = new Set(sceneNames);
+        Object.keys(sceneVoiceOverrides).forEach(name => {
+          if (!nameSet.has(name)) delete sceneVoiceOverrides[name];
+        });
+      }
+
+      function renderSceneVoiceList(sceneNames, embeddedVoices) {
+        pruneSceneVoiceOverrides(sceneNames);
+        sceneVoiceList.innerHTML = '';
+
+        if (!sceneNames || sceneNames.length === 0) {
+          sceneVoicesSection.style.display = 'none';
+          return;
+        }
+
+        const voiceOptions = [...voice.options].map(o => o.value);
+
+        sceneNames.forEach((name, idx) => {
+          const embedded = (embeddedVoices && embeddedVoices[idx]) || '';
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex; gap:8px; align-items:center; margin-bottom:8px;';
+
+          const label = document.createElement('span');
+          label.textContent = name;
+          label.style.cssText = 'flex: 1; font-size: 0.85rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+
+          const select = document.createElement('select');
+          select.dataset.sceneName = name;
+          select.style.cssText = 'flex: 1; margin-bottom: 0;';
+          const defaultLabel = embedded ? `Use script voice (${embedded})` : 'Use default voice';
+          const optionsHtml = [`<option value="">${defaultLabel}</option>`, ...voiceOptions.map(v => `<option value="${v}">${v}</option>`)];
+          const currentOverride = sceneVoiceOverrides[name];
+          if (currentOverride && !voiceOptions.includes(currentOverride)) {
+            optionsHtml.push(`<option value="${currentOverride}">${currentOverride}</option>`);
+          }
+          select.innerHTML = optionsHtml.join('');
+          select.value = currentOverride || '';
+
+          select.addEventListener('change', () => {
+            if (select.value) {
+              sceneVoiceOverrides[name] = select.value;
+            } else {
+              delete sceneVoiceOverrides[name];
+            }
+          });
+
+          row.appendChild(label);
+          row.appendChild(select);
+          sceneVoiceList.appendChild(row);
+        });
+
+        sceneVoicesSection.style.display = 'block';
+      }
+
+      function setSceneSelectorOptions(sceneNames) {
+        const names = Array.isArray(sceneNames) && sceneNames.length ? sceneNames : ['Scene_1'];
+        allSceneNames = names;
+        const nameSet = new Set(names);
+        [...deselectedScenes].forEach(name => {
+          if (!nameSet.has(name)) deselectedScenes.delete(name);
+        });
+
+        sceneCheckboxList.innerHTML = names.map(name => `
+          <label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:0.85rem; cursor:pointer;">
+            <input type="checkbox" data-scene-name="${name}" ${deselectedScenes.has(name) ? '' : 'checked'} />
+            <span>${name}</span>
+          </label>
+        `).join('');
+      }
+
+      function getSelectedSceneNames() {
+        return allSceneNames.filter(name => !deselectedScenes.has(name));
+      }
+
+      sceneCheckboxList.addEventListener('change', (e) => {
+        const checkbox = e.target.closest('input[type="checkbox"]');
+        if (!checkbox) return;
+        const name = checkbox.dataset.sceneName;
+        if (checkbox.checked) {
+          deselectedScenes.delete(name);
+        } else {
+          deselectedScenes.add(name);
+        }
+      });
+
+      document.getElementById('selectAllScenesBtn').addEventListener('click', () => {
+        deselectedScenes.clear();
+        setSceneSelectorOptions(allSceneNames);
+      });
+
+      document.getElementById('selectNoScenesBtn').addEventListener('click', () => {
+        deselectedScenes = new Set(allSceneNames);
+        setSceneSelectorOptions(allSceneNames);
+      });
+
+      function populateSceneSelectorLocal() {
+        const text = scriptText.value;
+        const matches = [...text.matchAll(/(?:^|\n)(?:#+\s*)?(?:Scene|SCENE)\s*[-:]?\s*(\d+|[A-Za-z0-9_\-]+)(?:\s*[-:]\s*(.*))?/gi)];
+        const sceneNames = matches.length ? matches.map(m => m[1]) : ['Scene_1'];
+        setSceneSelectorOptions(sceneNames);
+        renderSceneVoiceList(sceneNames, []);
+      }
+
+      async function parseAndUpdateScriptSettings() {
+        const text = scriptText.value.trim();
+        if (!text) {
+          setSceneSelectorOptions([]);
+          renderSceneVoiceList([], []);
+          return;
+        }
+
+        try {
+          const res = await fetch('/parse-script', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const sceneNames = data.scenes || [];
+            setSceneSelectorOptions(sceneNames);
+            renderSceneVoiceList(sceneNames, data.scene_voices || []);
+
+            if (data.settings) {
+              if (data.settings.system_instruction) {
+                systemInstruction.value = data.settings.system_instruction;
+              }
+              if (data.settings.temperature !== null && data.settings.temperature !== undefined) {
+                temperature.value = data.settings.temperature;
+              }
+              if (data.settings.voice) {
+                const matchedOption = [...voice.options].find(o => o.value.toLowerCase() === data.settings.voice.toLowerCase());
+                if (matchedOption) {
+                  voice.value = matchedOption.value;
+                } else {
+                  customVoice.value = data.settings.voice;
+                }
+              }
+              if (data.settings.model) {
+                const matchedOption = [...model.options].find(o => o.value.toLowerCase() === data.settings.model.toLowerCase());
+                if (matchedOption) {
+                  model.value = matchedOption.value;
+                  customModel.value = '';
+                } else {
+                  customModel.value = data.settings.model;
+                }
+              }
+            }
+          } else {
+            populateSceneSelectorLocal();
+          }
+        } catch (e) {
+          populateSceneSelectorLocal();
+        }
+      }
+
+      let debounceTimer = null;
+      scriptText.addEventListener('input', () => {
+        if (scriptText.value) {
+          sessionStorage.setItem(scriptStorageKey, scriptText.value);
+        } else {
+          sessionStorage.removeItem(scriptStorageKey);
+        }
+        deselectedScenes.clear();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (!scriptText.value.trim()) {
+            setSceneSelectorOptions(['Scene_1']);
+            return;
+          }
+          parseAndUpdateScriptSettings();
+        }, 400);
+      });
+
+      const savedScript = sessionStorage.getItem(scriptStorageKey);
+      if (savedScript) {
+        scriptText.value = savedScript;
+        deselectedScenes.clear();
+        parseAndUpdateScriptSettings();
+      }
+
+      // Auto-test API key when manually entered
+      let apiKeyDebounceTimer = null;
+      apiKey.addEventListener('input', () => {
+        clearTimeout(apiKeyDebounceTimer);
+        apiKeyDebounceTimer = setTimeout(() => {
+          autoTestAPI();
+        }, 800);
+      });
+
+      let bundleApiKeyDebounceTimer = null;
+      bundleApiKey.addEventListener('input', () => {
+        clearTimeout(bundleApiKeyDebounceTimer);
+        bundleApiKeyDebounceTimer = setTimeout(() => {
+          autoTestBundleAPI();
+        }, 800);
+      });
+
+      document.getElementById('loadScriptBtn').addEventListener('click', () => {
+        document.getElementById('scriptFileInput').click();
+      });
+
+      document.getElementById('scriptFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          setCourseName(file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'unsorted');
+          scriptText.value = event.target.result;
+          sessionStorage.setItem(scriptStorageKey, scriptText.value);
+          resetSceneSelectionToAll();
+          await loadCourses();
+          await parseAndUpdateScriptSettings();
+          setStatus(`✓ Loaded: ${file.name} (${file.size} bytes)`, 'success');
+        };
+        reader.onerror = () => {
+          setStatus('❌ Failed to load file.', 'error');
+        };
+        reader.readAsText(file);
+      });
+
+      document.getElementById('checkGeminiBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('checkGeminiBtn');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Checking...';
+        
+        setStatus('Checking Gemini API...', '');
+
+        try {
+          const response = await fetchWithTimeout('/check-gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: apiKey.value.trim() || undefined
+            })
+          }, 15000);  // 15 second timeout
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || 'Gemini API check failed.');
+          }
+
+          const models = (data.available_models || []).slice(0, 10);
+          const modelList = models.map(m => `✓ ${m}`).join('\n');
+          setStatus(`✓ API is valid! Found ${models.length} models:\n${modelList}`, 'success');
+        } catch (error) {
+          lastError = error.message || 'Gemini API check failed.';
+          if (error.message.includes('timeout')) {
+            setStatus('⏱️ API check timed out. The API may be slow or unreachable.', 'error');
+          } else {
+            setStatus(lastError, 'error');
+          }
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
+
+      function renderAudioList(files) {
+        if (!files || files.length === 0) {
+          updateAudioDropdown([]);
+          return;
+        }
+        updateAudioDropdown(files.map(String));
+      }
+
+      async function loadExistingAudio() {
+        try {
+          const res = await fetch('/list-audio?course_name=' + encodeURIComponent(courseName));
+          if (res.ok) {
+            const data = await res.json();
+            if (data.files) {
+              renderAudioList(data.files);
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      async function runApiAutoTest(keyInput, indicator, statusIcon, statusText, statusDetail) {
+        try {
+          const response = await fetchWithTimeout('/check-gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: keyInput.value.trim() || undefined
+            })
+          }, 10000);  // 10 second timeout for auto-test
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || 'API check failed.');
+          }
+
+          // Success
+          indicator.style.display = 'block';
+          indicator.style.background = 'rgba(16, 185, 129, 0.1)';
+          indicator.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+          statusIcon.textContent = '✓';
+          statusText.textContent = 'API loaded and tested';
+          statusText.style.color = 'var(--success)';
+          statusDetail.textContent = `Ready to generate audio. ${data.available_models ? 'Models available.' : ''}`;
+        } catch (error) {
+          // Error or no API key
+          if (keyInput.value.trim()) {
+            // API key entered but failed
+            indicator.style.display = 'block';
+            indicator.style.background = 'rgba(239, 68, 68, 0.1)';
+            indicator.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+            statusIcon.textContent = '✗';
+            statusText.textContent = error.message.includes('timeout') ? 'API test timeout' : 'API test failed';
+            statusText.style.color = 'var(--danger)';
+            statusDetail.textContent = error.message.includes('timeout') ? 'The API is slow or unreachable' : error.message;
+          } else {
+            // No API key in env or input
+            indicator.style.display = 'none';
+          }
+        }
+      }
+
+      async function autoTestAPI() {
+        return runApiAutoTest(
+          apiKey,
+          document.getElementById('apiStatusIndicator'),
+          document.getElementById('apiStatusIcon'),
+          document.getElementById('apiStatusText'),
+          document.getElementById('apiStatusDetail')
+        );
+      }
+
+      async function autoTestBundleAPI() {
+        return runApiAutoTest(
+          bundleApiKey,
+          document.getElementById('bundleApiStatusIndicator'),
+          document.getElementById('bundleApiStatusIcon'),
+          document.getElementById('bundleApiStatusText'),
+          document.getElementById('bundleApiStatusDetail')
+        );
+      }
+
+      loadCourses().then(loadExistingAudio);
+      autoTestAPI();
+      autoTestBundleAPI();
+
+      document.getElementById('preflightBtn').addEventListener('click', async () => {
+        const text = scriptText.value.trim();
+        if (!text) {
+          setStatus('Please load a transcript before reviewing the generation plan.', 'error');
+          return;
+        }
+        const selectedScenes = getSelectedSceneNames();
+        if (allSceneNames.length && !selectedScenes.length) {
+          setStatus('Select at least one scene to render.', 'error');
+          return;
+        }
+        const payload = {
+          text,
+          course_name: courseName,
+          model: getSelectedModel(),
+          voice: getSelectedVoice(),
+          system_instruction: systemInstruction.value.trim() || undefined,
+          temperature: temperature.value !== '' ? Number(temperature.value) : undefined,
+          scene_voices: { ...sceneVoiceOverrides }
+        };
+        if (selectedScenes.length && selectedScenes.length < allSceneNames.length) {
+          payload.scene_names = selectedScenes;
+        }
+        try {
+          const response = await fetch('/preflight', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || 'Preflight failed.');
+          const chunked = data.scenes.filter(scene => scene.will_chunk).length;
+          const distinctVoices = new Set(data.scenes.map(scene => scene.voice)).size;
+          preflightSummary.textContent = `${data.scene_count} scene(s), ${data.total_words} words, about ${data.estimated_seconds}s. ${data.cached_scene_count} unchanged scene(s) will be reused. ${data.model} / ${data.voice}.${distinctVoices > 1 ? ` Using ${distinctVoices} different voices across scenes.` : ''}${chunked ? ` ${chunked} scene(s) exceed 400 words and will be split at sentence boundaries.` : ''}`;
+          preflightSummary.style.display = 'block';
+        } catch (error) {
+          setStatus(error.message || 'Preflight failed.', 'error');
+        }
+      });
+
+      document.getElementById('testModelBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('testModelBtn');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Testing... (max 30s)';
+        
+        setStatus('Testing model and voice...', '');
+
+        try {
+          const response = await fetchWithTimeout('/test-model', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: apiKey.value.trim() || undefined,
+              model: getSelectedModel(),
+              voice: getSelectedVoice(),
+              system_instruction: systemInstruction.value.trim() || undefined,
+              temperature: temperature.value !== '' ? Number(temperature.value) : undefined
+            })
+          }, 30000);  // 30 second timeout
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || 'Model test failed.');
+          }
+
+          renderAudioList([data.file]);
+          setStatus('✓ Model and voice test passed! Audio sample generated.', 'success');
+        } catch (error) {
+          lastError = error.message || 'Model test failed.';
+          if (error.message.includes('timeout')) {
+            setStatus('⏱️ Test timed out (API may be overloaded). Try again in a few minutes.', 'error');
+          } else {
+            setStatus(lastError, 'error');
+          }
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
+
+      document.getElementById('restartServerBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('restartServerBtn');
+        const originalText = btn.textContent;
+        btn.textContent = '🔄 Restarting...';
+        btn.disabled = true;
+
+        try {
+          setStatus('Restarting server...', '');
+          const response = await fetch('/restart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || 'Server restart failed.');
+          }
+
+          setStatus('Server restarted successfully! Page will refresh...', 'success');
+          setTimeout(() => {
+            location.reload();
+          }, 2000);
+        } catch (error) {
+          btn.textContent = originalText;
+          btn.disabled = false;
+          lastError = error.message || 'Server restart failed.';
+          setStatus(lastError, 'error');
+        }
+      });
+
+      document.getElementById('generateBtn').addEventListener('click', async () => {
+        const text = scriptText.value.trim();
+        if (!text) {
+          setStatus('❌ Please paste a transcript first.', 'error');
+          return;
+        }
+
+        const btn = document.getElementById('generateBtn');
+        const stopBtn = document.getElementById('stopGenerateBtn');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Generating...';
+        stopBtn.style.display = 'block';
+
+        const selectedScenes = getSelectedSceneNames();
+        if (allSceneNames.length && !selectedScenes.length) {
+          setStatus('❌ Select at least one scene to render.', 'error');
+          return;
+        }
+        const forceRegenerate = forceRegenerateRequested;
+        forceRegenerateRequested = false;
+        const payload = {
+          text,
+          course_name: courseName,
+          api_key: apiKey.value.trim() || undefined,
+          model: getSelectedModel(),
+          voice: getSelectedVoice(),
+          system_instruction: systemInstruction.value.trim() || undefined,
+          temperature: temperature.value !== '' ? Number(temperature.value) : undefined,
+          scene_voices: { ...sceneVoiceOverrides }
+        };
+
+        if (forceRegenerate) payload.force_regenerate = true;
+
+        if (selectedScenes.length && selectedScenes.length < allSceneNames.length) {
+          payload.scene_names = selectedScenes;
+        }
+
+        setStatus(selectedScenes.length === allSceneNames.length ? '⏳ Generating all scenes...' : `⏳ Generating ${selectedScenes.length} selected scene(s)...`, '');
+        clearActivityLog();
+        showActivityLog();
+        addActivityItem('Initializing generation...', 'processing');
+        
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        progressContainer.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.textContent = '';
+
+        // Create abort controller for this generation
+        generationAbortController = new AbortController();
+
+        try {
+          addActivityItem('Connecting to Gemini API...', 'processing');
+          const response = await fetch('/generate-from-text-stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: generationAbortController.signal
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Generation failed.');
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          const files = [];
+          let totalScenes = 0;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value);
+            const lines = text.split('\n').filter(line => line.trim());
+
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+
+                if (data.error) {
+                  lastError = data.error;
+                  setStatus('❌ ' + data.error, 'error');
+                  addActivityItem('❌ ' + data.error, 'error');
+                  progressContainer.style.display = 'none';
+                  return;
+                }
+
+                if (data.status === 'generating') {
+                  totalScenes = data.total;
+                  const percent = (data.current / totalScenes) * 100;
+                  progressFill.style.width = percent + '%';
+                  progressText.textContent = `🎧 ${data.message}`;
+                  setStatus(data.message, '');
+                  addActivityItem(`Processing: ${data.message}`, 'processing');
+                }
+
+                if (data.status === 'completed') {
+                  files.push(data.file);
+                  renderAudioList(files);
+                  const percent = (data.current / data.total) * 100;
+                  progressFill.style.width = percent + '%';
+                  const filename = String(data.file).split(/[/\\]/).pop();
+                  addActivityItem(data.reused ? `✓ Reused unchanged output: ${filename}` : `✓ Completed: ${filename}`, 'success');
+                }
+
+                if (data.status === 'done') {
+                  const finalFiles = data.files || files;
+                  renderAudioList(finalFiles);
+                  setStatus(`✓ Generated ${finalFiles.length} audio file(s) successfully!`, 'success');
+                  addActivityItem(`✓ All done! Generated ${finalFiles.length} file(s)`, 'success');
+                  progressContainer.style.display = 'none';
+                }
+              } catch (e) {
+                // Skip non-JSON lines
+              }
+            }
+          }
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            lastError = 'Generation stopped by user.';
+            setStatus('⏹️ Rendering stopped.', '');
+            addActivityItem('⏹️ Rendering stopped by user.', 'error');
+          } else {
+            lastError = error.message || 'Generation failed.';
+            setStatus('❌ ' + lastError, 'error');
+            addActivityItem('❌ Error: ' + lastError, 'error');
+          }
+          progressContainer.style.display = 'none';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+          stopBtn.style.display = 'none';
+          generationAbortController = null;
+        }
+      });
+
+      document.getElementById('regenerateBtn').addEventListener('click', () => {
+        const selectedScenes = getSelectedSceneNames();
+        if (!selectedScenes.length || selectedScenes.length === allSceneNames.length) {
+          setStatus('Deselect at least one scene above before regenerating a subset.', 'error');
+          return;
+        }
+        forceRegenerateRequested = true;
+        document.getElementById('generateBtn').click();
+      });
+
+      document.getElementById('stopGenerateBtn').addEventListener('click', () => {
+        if (generationAbortController) {
+          generationAbortController.abort();
+          const stopBtn = document.getElementById('stopGenerateBtn');
+          stopBtn.textContent = '⏹️ Stopping...';
+          stopBtn.disabled = true;
+        }
+      });
+
+      document.getElementById('downloadZipBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('downloadZipBtn');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Preparing ZIP...';
+        try {
+          const response = await fetch('/download-output-zip?course_name=' + encodeURIComponent(courseName));
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.detail || 'Unable to create the WAV archive.');
+          }
+          const archive = await response.blob();
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(archive);
+          link.download = 'generated_audio_bundle.zip';
+          link.click();
+          URL.revokeObjectURL(link.href);
+          setStatus('WAV archive downloaded.', 'success');
+        } catch (error) {
+          setStatus(error.message || 'Unable to download the WAV archive.', 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
+
+      document.getElementById('clearCourseAudioBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('clearCourseAudioBtn');
+        if (!confirm(`Clear all generated WAV files for ${courseName}?`)) return;
+        btn.disabled = true;
+        try {
+          const response = await fetch('/clear-course-audio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ course_name: courseName })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || 'Unable to clear course audio.');
+          selectedAudioPlayer.pause();
+          selectedAudioPlayer.style.display = 'none';
+          renderAudioList([]);
+          setStatus(`Cleared ${data.deleted} audio file(s) for ${data.course}.`, 'success');
+        } catch (error) {
+          setStatus(error.message || 'Unable to clear course audio.', 'error');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      document.getElementById('copyErrorBtn').addEventListener('click', async () => {
+        if (!lastError) {
+          setStatus('ℹ️ No error to copy yet.', 'error');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(lastError);
+          setStatus('✓ Error copied to clipboard!', 'success');
+        } catch (error) {
+          setStatus('❌ Clipboard copy failed in this browser.', 'error');
+        }
+      });
+
+      function setStatus(message, kind) {
+        status.textContent = message;
+        status.className = 'status';
+        if (kind) status.classList.add(kind);
+      }
+    </script>
+  </body>
+</html>
