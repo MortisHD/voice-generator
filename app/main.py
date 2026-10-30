@@ -131,11 +131,44 @@ def generate_scene_file(
     return generated_path, False
 
 
-def resolve_scene_voice(scene: tuple, scene_voice_overrides: dict, default_voice: str | None) -> str | None:
-    """Resolve the effective voice for a scene: manual override > embedded script voice > default."""
+def resolve_scene_voice(
+    scene: tuple,
+    scene_voice_overrides: dict,
+    default_voice: str | None,
+    voice_roles: dict | None = None,
+    voice_map: dict | None = None,
+) -> str | None:
+    """Resolve the effective voice for a scene: manual override > embedded script voice > default.
+
+    In two-voice scripts the embedded value is a role letter (A/B), mapped to a real voice via voice_map.
+    """
     scene_name = scene[0]
     embedded_voice = scene[2] if len(scene) > 2 else None
-    return (scene_voice_overrides or {}).get(scene_name) or embedded_voice or default_voice
+    override = (scene_voice_overrides or {}).get(scene_name)
+    if override:
+        return override
+    if voice_roles and embedded_voice in voice_roles:
+        return (voice_map or {}).get(embedded_voice) or default_voice
+    return embedded_voice or default_voice
+
+
+def parse_scenes(text: str) -> tuple[list[tuple], dict]:
+    """Parse transcript text into (name, text, voice_or_role, system_instruction) records plus any voice roles.
+
+    Handles the two-voice block format (narration inside fenced blocks, with preamble,
+    cue lines and per-voice system instructions kept out of the audio) as well as standard scenes.
+    """
+    return parse_course_script(text)
+
+
+def scene_system_instruction(scene: tuple, default_instruction: str | None) -> str | None:
+    embedded = scene[3] if len(scene) > 3 else None
+    return embedded if embedded is not None else default_instruction
+
+
+def scene_output_dir(scene: tuple, output_dir: Path, voice_roles: dict) -> Path:
+    group = derive_scene_group(scene[0]) if voice_roles else None
+    return output_dir / group if group else output_dir
 
 
 _CLIP_SCENE_GROUP_PATTERN = re.compile(r"^(.+)_[A-Za-z]\d+$")
@@ -242,20 +275,10 @@ def build_zip_archive(wav_files: list[Path], base_dir: Path | None = None) -> io
     return archive
 
 
-@app.get("/test-api-key")
-def test_api_key():
-    return {
-        "api_key_present": bool(API_KEY),
-        "api_key_value": API_KEY,
-        "api_key_preview": f"{API_KEY[:20]}..." if API_KEY else None
-    }
-
-
 @app.get("/debug-config")
 def debug_config():
     return {
         "api_key_present": bool(API_KEY),
-        "api_key_preview": f"{API_KEY[:20]}..." if API_KEY else None,
         "model": MODEL,
         "voice": VOICE,
         "output_dir": str(OUTPUT_DIR)
@@ -327,14 +350,18 @@ def clear_course_audio(payload: dict):
 @app.post("/parse-script")
 def parse_script_endpoint(payload: dict):
     text = payload.get("text", "")
-    scenes = parse_script_text(text)
+    scenes, voice_roles = parse_scenes(text)
     settings = extract_script_settings(text)
     return {
         "status": "ok",
         "scenes": [s[0] for s in scenes],
-        "scene_voices": [(s[2] if len(s) > 2 else None) for s in scenes],
+        "scene_voices": [
+            (None if voice_roles else (s[2] if len(s) > 2 else None)) for s in scenes
+        ],
         "scene_count": len(scenes),
         "settings": settings,
+        "format": "two_voice" if voice_roles else "standard",
+        "voice_roles": {letter: persona for letter, (persona, _instruction) in voice_roles.items()},
     }
 
 
@@ -346,8 +373,10 @@ def preflight(payload: dict):
 
     model, voice, system_instruction, _ = resolve_generation_settings(payload)
     scene_voice_overrides = payload.get("scene_voices") or {}
+    all_scenes, voice_roles = parse_scenes(text)
+    voice_map = payload.get("voice_map") or {}
     scenes = select_scenes(
-        parse_script_text(text),
+        all_scenes,
         payload.get("scene_name"),
         payload.get("scene_index"),
         payload.get("scene_names"),
@@ -357,9 +386,10 @@ def preflight(payload: dict):
     scene_summaries = []
     for scene in scenes:
         scene_name, scene_text = scene[0], scene[1]
-        effective_voice = resolve_scene_voice(scene, scene_voice_overrides, voice)
-        fingerprint = scene_fingerprint(scene_text, model, effective_voice, system_instruction)
-        output_path = output_dir / f"{scene_name}_{fingerprint[:12]}.wav"
+        effective_voice = resolve_scene_voice(scene, scene_voice_overrides, voice, voice_roles, voice_map)
+        effective_instruction = scene_system_instruction(scene, system_instruction)
+        fingerprint = scene_fingerprint(scene_text, model, effective_voice, effective_instruction)
+        output_path = scene_output_dir(scene, output_dir, voice_roles) / f"{scene_name}_{fingerprint[:12]}.wav"
         scene_summaries.append(
             {
                 "name": scene_name,
@@ -414,15 +444,21 @@ def generate_from_text(payload: dict):
             temperature=temperature,
             system_instruction=system_instruction,
         )
-        scenes = parse_script_text(text)
+        scenes, voice_roles = parse_scenes(text)
         if not scenes:
             raise HTTPException(status_code=400, detail="No scenes were found in the transcript.")
 
         scenes = select_scenes(scenes, scene_name, scene_index, payload.get("scene_names"))
 
         scene_voice_overrides = payload.get("scene_voices") or {}
+        voice_map = payload.get("voice_map") or {}
         scenes = [
-            (scene[0], scene[1], resolve_scene_voice(scene, scene_voice_overrides, None))
+            (
+                scene[0],
+                scene[1],
+                resolve_scene_voice(scene, scene_voice_overrides, None, voice_roles, voice_map),
+                scene[3] if len(scene) > 3 else None,
+            )
             for scene in scenes
         ]
 
@@ -447,6 +483,7 @@ def generate_from_text_stream(payload: dict):
     scene_names_filter = payload.get("scene_names")
     force_regenerate = bool(payload.get("force_regenerate"))
     scene_voice_overrides = payload.get("scene_voices") or {}
+    voice_map = payload.get("voice_map") or {}
     output_dir = course_output_dir(payload.get("course_name"))
     model, voice, system_instruction, temperature = resolve_generation_settings(payload)
 
@@ -459,7 +496,7 @@ def generate_from_text_stream(payload: dict):
                 temperature=temperature,
                 system_instruction=system_instruction,
             )
-            scenes = parse_script_text(text)
+            scenes, voice_roles = parse_scenes(text)
             if not scenes:
                 yield json.dumps({"error": "No scenes were found in the transcript."}) + "\n"
                 return
@@ -471,7 +508,7 @@ def generate_from_text_stream(payload: dict):
 
             for idx, scene in enumerate(scenes, start=1):
                 scene_name_item, scene_text = scene[0], scene[1]
-                effective_voice = resolve_scene_voice(scene, scene_voice_overrides, voice)
+                effective_voice = resolve_scene_voice(scene, scene_voice_overrides, voice, voice_roles, voice_map)
                 yield json.dumps({
                     "status": "generating",
                     "current": idx,
@@ -488,6 +525,8 @@ def generate_from_text_stream(payload: dict):
                         scene_text,
                         output_dir,
                         scene_voice=effective_voice,
+                        scene_system_instruction=scene_system_instruction(scene, system_instruction),
+                        scene_group=derive_scene_group(scene_name_item) if voice_roles else None,
                         force_regenerate=force_regenerate,
                     )
                     relative_result = Path(result).relative_to(OUTPUT_DIR).as_posix()
@@ -780,9 +819,11 @@ async def generate_from_file(
     try:
         contents = await file.read()
         text = contents.decode("utf-8")
-        scenes = parse_script_text(text)
+        scenes, voice_roles = parse_scenes(text)
         if not scenes:
             raise HTTPException(status_code=400, detail="No scenes were found in the uploaded file.")
+        if voice_roles:
+            scenes = [(s[0], s[1], None, s[3]) for s in scenes]
 
         if scene_name:
             scenes = [scene for scene in scenes if scene[0] == scene_name]

@@ -5,4 +5,5 @@ __pycache__/
 api.env
 /generated_audio/
 *.zip
+test_output.txt
 .DS_Store

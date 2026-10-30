@@ -73,7 +73,7 @@ class GeminiTTSService:
                 err_str = str(exc)
                 print(f"[Attempt {attempt}] API error: {err_str[:150]}")
                 # Retry on server errors (500, 503), rate limits (429), and unavailable (UNAVAILABLE)
-                if ("503" in err_str or "500" in err_str or "UNAVAILABLE" in err_str or "INTERNAL" in err_str or "high demand" in err_str or "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "ServiceUnavailable" in err_str) and attempt < max_retries:
+                if ("503" in err_str or "500" in err_str or "UNAVAILABLE" in err_str or "INTERNAL" in err_str or "high demand" in err_str or "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "ServiceUnavailable" in err_str or "could not be completed" in err_str) and attempt < max_retries:
                     # Exponential backoff with jitter to avoid thundering herd
                     wait_time = delay * (2 ** (attempt - 1))
                     print(f"[Attempt {attempt}] Retrying in {wait_time}s...")
